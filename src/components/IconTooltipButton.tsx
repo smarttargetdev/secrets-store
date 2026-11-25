@@ -6,11 +6,13 @@ type TooltipSide = 'top' | 'bottom';
 interface IconTooltipButtonProps
   extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'title' | 'aria-label'> {
   label: string;
+  text?: string;
   icon: ReactNode;
   variant?: ButtonVariant;
   tooltipSide?: TooltipSide;
   size?: 'sm' | 'md';
   fullWidth?: boolean;
+  iconOnly?: boolean;
 }
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
@@ -28,20 +30,29 @@ const VARIANT_CLASSES: Record<ButtonVariant, string> = {
 
 export function IconTooltipButton({
   label,
+  text,
   icon,
   variant = 'secondary',
   tooltipSide = 'top',
   size = 'md',
   fullWidth = false,
+  iconOnly = false,
   className = '',
   type = 'button',
   ...rest
 }: IconTooltipButtonProps) {
+  const visibleText = text ?? label;
+  const showFloatingTooltip = iconOnly || visibleText !== label;
+
   const sizeClass = fullWidth
-    ? 'w-full min-h-[46px] h-12'
-    : size === 'sm'
-      ? 'min-w-[38px] min-h-[38px] w-[38px] h-[38px]'
-      : 'min-w-[44px] min-h-[44px] w-11 h-11';
+    ? 'w-full min-h-[46px] h-12 px-4 text-sm font-semibold gap-2 whitespace-nowrap'
+    : iconOnly
+      ? size === 'sm'
+        ? 'min-w-[36px] min-h-[36px] w-9 h-9'
+        : 'min-w-[44px] min-h-[44px] w-11 h-11'
+      : size === 'sm'
+        ? 'min-h-[38px] h-[38px] px-3 text-xs font-medium gap-1.5 whitespace-nowrap'
+        : 'min-h-[44px] h-11 px-4 text-sm font-medium gap-2 whitespace-nowrap';
 
   const tooltipPos =
     tooltipSide === 'bottom'
@@ -61,14 +72,17 @@ export function IconTooltipButton({
         className={`${sizeClass} rounded-xl inline-flex items-center justify-center transition-colors disabled:opacity-40 disabled:pointer-events-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500 ${VARIANT_CLASSES[variant]} ${className}`}
         {...rest}
       >
-        {icon}
+        <span className="shrink-0 inline-flex items-center">{icon}</span>
+        {!iconOnly && <span>{visibleText}</span>}
       </button>
-      <span
-        role="tooltip"
-        className={`pointer-events-none absolute ${tooltipPos} z-50 px-2.5 py-1.5 rounded-lg bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-[11px] font-medium whitespace-nowrap shadow-md opacity-0 group-hover/tip:opacity-100 group-focus-within/tip:opacity-100 transition-all duration-150`}
-      >
-        {label}
-      </span>
+      {showFloatingTooltip && (
+        <span
+          role="tooltip"
+          className={`pointer-events-none absolute ${tooltipPos} z-50 px-2.5 py-1.5 rounded-lg bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-[11px] font-medium whitespace-nowrap shadow-md opacity-0 group-hover/tip:opacity-100 group-focus-within/tip:opacity-100 transition-all duration-150`}
+        >
+          {label}
+        </span>
+      )}
     </div>
   );
 }

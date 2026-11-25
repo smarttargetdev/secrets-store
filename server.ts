@@ -215,7 +215,7 @@ async function startServer() {
   }
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`CF Vault server listening on http://0.0.0.0:${PORT}`);
+    console.log(`Secrets Manager server listening on http://0.0.0.0:${PORT}`);
   });
 }
 

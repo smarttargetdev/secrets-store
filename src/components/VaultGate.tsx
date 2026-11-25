@@ -8,7 +8,6 @@ import {
   Eye,
   EyeOff,
   KeyRound,
-  Lock,
   LockOpen,
   RotateCcw,
   ShieldCheck,
@@ -23,8 +22,9 @@ import {
   wipeEncryptedVault,
 } from '../lib/vaultCrypto';
 import type { CloudflareProfile, ThemePreference } from '../types/cloudflare';
+import { AppHeader } from './AppHeader';
+import { BrandLogo } from './BrandLogo';
 import { IconTooltipButton } from './IconTooltipButton';
-import { ThemeToggle } from './ThemeToggle';
 
 interface VaultGateProps {
   vaultExists: boolean;
@@ -246,24 +246,24 @@ export function VaultGate({
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
-      {/* Minimal top bar */}
-      <header className="w-full max-w-6xl mx-auto px-4 sm:px-8 h-16 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2.5 whitespace-nowrap shrink-0">
-          <div className="w-8 h-8 rounded-lg bg-orange-600 dark:bg-orange-500 text-white flex items-center justify-center">
-            <ShieldCheck className="w-4 h-4" />
-          </div>
-          <span className="font-display font-bold text-lg tracking-tight">CF Vault</span>
-        </div>
-        <ThemeToggle preference={themePreference} onChange={onThemeChange} />
-      </header>
+      <AppHeader
+        selectedPanel={
+          vaultExists
+            ? 'Desbloqueio do Cofre'
+            : onboardingStep === 'pin'
+              ? 'Configuração Inicial · Passo 1 de 2'
+              : 'Configuração Inicial · Passo 2 de 2'
+        }
+        themePreference={themePreference}
+        onThemeChange={onThemeChange}
+        containerClassName="max-w-6xl mx-auto"
+      />
 
       <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-8 py-8 flex items-center justify-center">
         {vaultExists ? (
           <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 sm:p-8">
             <div className="flex flex-col items-center text-center mb-6">
-              <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 text-orange-600 dark:text-orange-400 flex items-center justify-center mb-4">
-                <Lock className="w-5 h-5" />
-              </div>
+              <BrandLogo size="lg" className="mb-4" />
               <h1 className="font-display text-2xl font-bold tracking-tight text-balance">
                 Desbloquear cofre Cloudflare
               </h1>
@@ -317,13 +317,14 @@ export function VaultGate({
               <div className="h-14 flex items-center justify-center">
                 <IconTooltipButton
                   label="Limpar PIN"
+                  text="Limpar"
                   disabled={busy}
                   fullWidth
                   onClick={() => {
                     setPin('');
                     setError(null);
                   }}
-                  className="!h-14"
+                  className="!h-14 !px-2 !text-xs"
                   icon={<RotateCcw className="w-4 h-4" />}
                 />
               </div>
@@ -341,11 +342,12 @@ export function VaultGate({
               <div className="h-14 flex items-center justify-center">
                 <IconTooltipButton
                   label="Apagar último dígito"
+                  text="Apagar"
                   disabled={busy}
                   fullWidth
                   onClick={() => setPin((prev) => prev.slice(0, -1))}
-                  className="!h-14"
-                  icon={<Delete className="w-5 h-5" />}
+                  className="!h-14 !px-2 !text-xs"
+                  icon={<Delete className="w-4 h-4" />}
                 />
               </div>
             </div>
@@ -366,6 +368,7 @@ export function VaultGate({
                 <div className="flex justify-center">
                   <IconTooltipButton
                     label="Esqueci meu PIN · Redefinir cofre local"
+                    text="Redefinir cofre local"
                     variant="danger"
                     size="sm"
                     onClick={() => setConfirmWipe(true)}
@@ -387,6 +390,7 @@ export function VaultGate({
                     />
                     <IconTooltipButton
                       label="Confirmar limpeza do cofre"
+                      text="Limpar cofre"
                       size="sm"
                       variant="primary"
                       onClick={handleWipe}
@@ -507,6 +511,7 @@ export function VaultGate({
                     </div>
                     <IconTooltipButton
                       label="Voltar ao PIN"
+                      text="Voltar"
                       size="sm"
                       variant="secondary"
                       onClick={() => {
@@ -542,10 +547,11 @@ export function VaultGate({
                         value={apiToken}
                         onChange={(e) => setApiToken(e.target.value)}
                         placeholder="Cole o Bearer Token criado no painel Cloudflare"
-                        className="flex-1 h-11 px-3.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        className="flex-1 min-w-0 h-11 px-3.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-orange-500"
                       />
                       <IconTooltipButton
                         label={showToken ? 'Ocultar token' : 'Mostrar token'}
+                        text={showToken ? 'Ocultar' : 'Mostrar'}
                         variant="secondary"
                         onClick={() => setShowToken((prev) => !prev)}
                         icon={showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -602,9 +608,10 @@ export function VaultGate({
                     </div>
                   )}
 
-                  <div className="flex items-center justify-end gap-3 pt-2">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-2">
                     <IconTooltipButton
                       label={verifying ? 'Verificando token...' : 'Verificar Token & Zone ID'}
+                      text={verifying ? 'Verificando...' : 'Verificar Token'}
                       variant="secondary"
                       disabled={verifying || busy}
                       onClick={handleVerifyCredentials}

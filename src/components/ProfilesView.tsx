@@ -279,6 +279,7 @@ export function ProfilesView({
           </div>
           <IconTooltipButton
             label="Adicionar perfil Cloudflare"
+            text="Novo Perfil"
             variant="primary"
             tooltipSide="bottom"
             onClick={openCreateForm}
@@ -293,7 +294,7 @@ export function ProfilesView({
             return (
               <li
                 key={p.id}
-                className="p-4 sm:p-5 flex items-center justify-between gap-3"
+                className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
               >
                 <div className="min-w-0 space-y-1">
                   <div className="flex items-center gap-2">
@@ -313,22 +314,24 @@ export function ProfilesView({
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-2 shrink-0 flex-wrap">
                   {!isActive && (
                     <IconTooltipButton
                       label={`Ativar perfil ${p.label}`}
+                      text="Ativar"
                       size="sm"
                       variant="primary"
                       onClick={() => {
                         onSelectProfile(p.id);
                         onNotify(`Perfil ativo alterado para "${p.label}".`);
                       }}
-                      icon={<UserCheck className="w-4 h-4" />}
+                      icon={<UserCheck className="w-3.5 h-3.5" />}
                     />
                   )}
 
                   <IconTooltipButton
                     label={`Editar perfil ${p.label}`}
+                    text="Editar"
                     size="sm"
                     variant="secondary"
                     onClick={() => openEditForm(p)}
@@ -340,27 +343,30 @@ export function ProfilesView({
                       <>
                         <IconTooltipButton
                           label="Cancelar remoção"
+                          text="Cancelar"
                           size="sm"
                           variant="secondary"
                           onClick={() => setConfirmRemoveId(null)}
-                          icon={<X className="w-4 h-4" />}
+                          icon={<X className="w-3.5 h-3.5" />}
                         />
                         <IconTooltipButton
                           label="Confirmar remoção do perfil"
+                          text="Confirmar"
                           size="sm"
                           variant="primary"
                           onClick={() => void handleRemoveProfile(p.id)}
                           className="!bg-red-600 hover:!bg-red-700"
-                          icon={<Check className="w-4 h-4" />}
+                          icon={<Check className="w-3.5 h-3.5" />}
                         />
                       </>
                     ) : (
                       <IconTooltipButton
                         label={`Remover perfil ${p.label}`}
+                        text="Remover"
                         size="sm"
                         variant="danger"
                         onClick={() => setConfirmRemoveId(p.id)}
-                        icon={<Trash2 className="w-4 h-4" />}
+                        icon={<Trash2 className="w-3.5 h-3.5" />}
                       />
                     ))}
                 </div>
@@ -392,6 +398,7 @@ export function ProfilesView({
             </div>
             <IconTooltipButton
               label="Bloquear cofre agora"
+              iconOnly
               size="sm"
               variant="secondary"
               onClick={onLockNow}
@@ -454,6 +461,7 @@ export function ProfilesView({
             {!confirmWipe ? (
               <IconTooltipButton
                 label="Apagar todos os perfis e redefinir cofre"
+                text="Redefinir"
                 size="sm"
                 variant="danger"
                 onClick={() => setConfirmWipe(true)}
@@ -466,10 +474,11 @@ export function ProfilesView({
                   size="sm"
                   variant="secondary"
                   onClick={() => setConfirmWipe(false)}
-                  icon={<X className="w-4 h-4" />}
+                  icon={<X className="w-3.5 h-3.5" />}
                 />
                 <IconTooltipButton
                   label="Confirmar limpeza total"
+                  text="Confirmar"
                   size="sm"
                   variant="primary"
                   onClick={() => {
@@ -477,7 +486,7 @@ export function ProfilesView({
                     onVaultWiped();
                   }}
                   className="!bg-red-600 hover:!bg-red-700"
-                  icon={<Check className="w-4 h-4" />}
+                  icon={<Check className="w-3.5 h-3.5" />}
                 />
               </div>
             )}
@@ -523,10 +532,11 @@ export function ProfilesView({
                     value={apiToken}
                     onChange={(e) => setApiToken(e.target.value)}
                     placeholder="Bearer Token"
-                    className="flex-1 h-11 px-3.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 font-mono text-xs"
+                    className="flex-1 min-w-0 h-11 px-3.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 font-mono text-xs"
                   />
                   <IconTooltipButton
                     label={showToken ? 'Ocultar token' : 'Mostrar token'}
+                    text={showToken ? 'Ocultar' : 'Mostrar'}
                     variant="secondary"
                     onClick={() => setShowToken((prev) => !prev)}
                     icon={showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -576,7 +586,7 @@ export function ProfilesView({
                 </p>
               )}
 
-              <div className="flex items-center justify-end gap-2.5 pt-2">
+              <div className="flex flex-wrap items-center justify-end gap-2.5 pt-2">
                 <IconTooltipButton
                   label="Cancelar"
                   variant="secondary"
@@ -585,6 +595,7 @@ export function ProfilesView({
                 />
                 <IconTooltipButton
                   label={verifying ? 'Validando token...' : 'Validar Token & Zone ID'}
+                  text={verifying ? 'Validando...' : 'Validar Token'}
                   variant="secondary"
                   disabled={verifying}
                   onClick={() => void handleVerify()}

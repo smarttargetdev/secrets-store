@@ -36,8 +36,8 @@ export interface StoredProfileMeta {
   updatedAt: string;
 }
 
-const KEYCHAIN_SERVICE_PREFIX = 'com.cfvault.cloudflare.profile';
-const INDEX_SERVICE = 'com.cfvault.cloudflare.index';
+const KEYCHAIN_SERVICE_PREFIX = 'com.secretsmanager.cloudflare.profile';
+const INDEX_SERVICE = 'com.secretsmanager.cloudflare.index';
 
 function getProfileService(profileId: string): string {
   return \`\${KEYCHAIN_SERVICE_PREFIX}.\${profileId}\`;
@@ -133,7 +133,7 @@ export async function getCloudflareCredentials(
   const result = await Keychain.getGenericPassword({
     service: getProfileService(profileId),
     authenticationPrompt: {
-      title: 'CF Vault',
+      title: 'Secrets Manager',
       subtitle: 'Desbloquear credenciais Cloudflare',
       description: promptMessage,
       cancel: 'Cancelar',
@@ -249,12 +249,15 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { SvgUri } from 'react-native-svg';
 import {
   CloudflareCredentials,
   saveCloudflareCredentials,
   verifyCloudflareTokenAndZone,
 } from '../auth/cloudflareKeychain';
 import { useAppTheme } from '../theme/theme';
+
+const BRAND_LOGO_URL = 'https://assets.smarttarget.com.br/company/target.svg';
 
 interface Props {
   onAuthenticated: (credentials: CloudflareCredentials) => void;
@@ -304,6 +307,10 @@ export function AuthSetupScreen({ onAuthenticated }: Props) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.scroll}>
+        <View style={styles.brandRow}>
+          <SvgUri uri={BRAND_LOGO_URL} width={36} height={36} />
+          <Text style={[styles.brandText, { color: colors.text }]}>Secrets Manager</Text>
+        </View>
         <Text style={[styles.title, { color: colors.text }]}>Conectar conta Cloudflare</Text>
         <Text style={[styles.subtitle, { color: colors.muted }]}>
           Suas credenciais serão cifradas e armazenadas no Keychain/Keystore nativo do dispositivo.
@@ -397,6 +404,8 @@ export function AuthSetupScreen({ onAuthenticated }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   scroll: { padding: 20, paddingTop: 48 },
+  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 },
+  brandText: { fontSize: 18, fontWeight: '700' },
   title: { fontSize: 24, fontWeight: '700', marginBottom: 8 },
   subtitle: { fontSize: 14, lineHeight: 20, marginBottom: 24 },
   card: { borderWidth: 1, borderRadius: 16, padding: 16, gap: 12 },
@@ -596,9 +605,12 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { SvgUri } from 'react-native-svg';
 import { CloudflareCredentials } from '../auth/cloudflareKeychain';
 import { cloudflareClient, WorkerSecretItem } from '../services/cloudflareClient';
 import { useAppTheme } from '../theme/theme';
+
+const BRAND_LOGO_URL = 'https://assets.smarttarget.com.br/company/target.svg';
 
 interface Props {
   credentials: CloudflareCredentials;
@@ -666,13 +678,16 @@ export function SecretsDashboardScreen({ credentials, onLock }: Props) {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <View>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>
-            {credentials.profileLabel}
-          </Text>
-          <Text style={[styles.headerSub, { color: colors.muted }]}>
-            Worker: {selectedScript || 'Nenhum'}
-          </Text>
+        <View style={styles.headerBrand}>
+          <SvgUri uri={BRAND_LOGO_URL} width={30} height={30} />
+          <View>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>
+              {credentials.profileLabel}
+            </Text>
+            <Text style={[styles.headerSub, { color: colors.muted }]}>
+              Worker: {selectedScript || 'Nenhum'}
+            </Text>
+          </View>
         </View>
         <View style={styles.headerActions}>
           <Pressable
@@ -778,6 +793,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  headerBrand: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   headerTitle: { fontSize: 18, fontWeight: '700' },
   headerSub: { fontSize: 12, marginTop: 2 },
   headerActions: { flexDirection: 'row', gap: 8 },
@@ -902,7 +918,7 @@ export default function App() {
       description: 'Manifesto com react-native-keychain e dependências nativas.',
       language: 'json',
       content: `{
-  "name": "cf-vault-mobile",
+  "name": "secrets-manager-mobile",
   "version": "1.0.0",
   "private": true,
   "scripts": {
@@ -915,7 +931,8 @@ export default function App() {
     "react": "19.0.0",
     "react-native": "0.79.0",
     "react-native-keychain": "^9.2.2",
-    "react-native-safe-area-context": "^5.3.0"
+    "react-native-safe-area-context": "^5.3.0",
+    "react-native-svg": "^15.11.2"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",
@@ -929,7 +946,7 @@ export default function App() {
       title: 'Guia de Instalação & Keychain',
       description: 'Instruções para instalar dependências iOS/Android e configurar FaceID/Keystore.',
       language: 'markdown',
-      content: `# CF Vault Mobile (React Native)
+      content: `# Secrets Manager Mobile (React Native)
 
 Aplicativo React Native para gerenciar **Workers Secrets** e **Secrets Store** da Cloudflare usando \`react-native-keychain\`.
 
@@ -971,7 +988,7 @@ export async function downloadReactNativeZip(): Promise<void> {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;
-  anchor.download = 'cf-vault-react-native.zip';
+  anchor.download = 'secrets-manager-react-native.zip';
   document.body.appendChild(anchor);
   anchor.click();
   document.body.removeChild(anchor);

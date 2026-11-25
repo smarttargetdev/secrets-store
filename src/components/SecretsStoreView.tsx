@@ -1,8 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
   Check,
   Copy,
+  CopyPlus,
+  Eye,
+  EyeOff,
   Layers,
   Pencil,
   Plus,
@@ -42,6 +45,25 @@ export function SecretsStoreView({ profile, onNotify }: SecretsStoreViewProps) {
   const [duplicateTarget, setDuplicateTarget] = useState<StoreSecret | null>(null);
   const [duplicateName, setDuplicateName] = useState('');
   const [duplicating, setDuplicating] = useState(false);
+
+  const [copiedSecretId, setCopiedSecretId] = useState<string | null>(null);
+  const [copiedValueId, setCopiedValueId] = useState<string | null>(null);
+  const [maskValues, setMaskValues] = useState(true);
+  const [sessionValues, setSessionValues] = useState<Record<string, string>>({});
+  const copyTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyTimerRef.current !== null) {
+        window.clearTimeout(copyTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    setSessionValues({});
+    setMaskValues(true);
+  }, [profile.id]);
 
   const loadStores = useCallback(async () => {
     setLoadingStores(true);
@@ -149,6 +171,11 @@ export function SecretsStoreView({ profile, onNotify }: SecretsStoreViewProps) {
     }
   };
 
+  const getSessionValueKey = useCallback(
+    (storeId: string, secretName: string) => `${storeId}::${secretName}`,
+    []
+  );
+
   const handleDeleteSecret = async (secret: StoreSecret) => {
     if (!selectedStoreId) return;
     setError(null);
@@ -160,10 +187,49 @@ export function SecretsStoreView({ profile, onNotify }: SecretsStoreViewProps) {
         secret.id
       );
       setConfirmDeleteSecretId(null);
+      setSessionValues((prev) => {
+        const next = { ...prev };
+        delete next[getSessionValueKey(selectedStoreId, secret.name)];
+        return next;
+      });
       onNotify(`Secret "${secret.name}" removida do Store.`);
       await loadStoreSecrets();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao excluir secret.');
+    }
+  };
+
+  const handleCopySecretName = async (secret: StoreSecret) => {
+    try {
+      await navigator.clipboard.writeText(secret.name);
+      setCopiedSecretId(secret.id);
+      setCopiedValueId(null);
+      if (copyTimerRef.current !== null) {
+        window.clearTimeout(copyTimerRef.current);
+      }
+      copyTimerRef.current = window.setTimeout(() => {
+        setCopiedSecretId((prev) => (prev === secret.id ? null : prev));
+      }, 2000);
+      onNotify(`Chave "${secret.name}" copiada.`);
+    } catch {
+      onNotify('Não foi possível copiar para a área de transferência.');
+    }
+  };
+
+  const handleCopySecretValue = async (secret: StoreSecret, secretValue: string) => {
+    try {
+      await navigator.clipboard.writeText(secretValue);
+      setCopiedValueId(secret.id);
+      setCopiedSecretId(null);
+      if (copyTimerRef.current !== null) {
+        window.clearTimeout(copyTimerRef.current);
+      }
+      copyTimerRef.current = window.setTimeout(() => {
+        setCopiedValueId((prev) => (prev === secret.id ? null : prev));
+      }, 2000);
+      onNotify(`Valor de "${secret.name}" copiado.`);
+    } catch {
+      onNotify('Não foi possível copiar o valor.');
     }
   };
 
@@ -173,16 +239,24 @@ export function SecretsStoreView({ profile, onNotify }: SecretsStoreViewProps) {
     setDuplicating(true);
     setError(null);
     try {
+      const nextName = duplicateName.trim();
       await cloudflareApi.duplicateStoreSecret(
         profile.apiToken,
         profile.accountId,
         selectedStoreId,
         duplicateTarget.id,
-        duplicateName.trim(),
+        nextName,
         duplicateTarget.comment,
         duplicateTarget.scopes
       );
-      onNotify(`Secret duplicada como "${duplicateName.trim()}".`);
+      const sourceVal = sessionValues[getSessionValueKey(selectedStoreId, duplicateTarget.name)];
+      if (sourceVal !== undefined) {
+        setSessionValues((prev) => ({
+          ...prev,
+          [getSessionValueKey(selectedStoreId, nextName)]: sourceVal,
+        }));
+      }
+      onNotify(`Secret duplicada como "${nextName}".`);
       setDuplicateTarget(null);
       setDuplicateName('');
       await loadStoreSecrets();
@@ -202,20 +276,22 @@ export function SecretsStoreView({ profile, onNotify }: SecretsStoreViewProps) {
           <div className="flex items-center gap-1.5">
             <IconTooltipButton
               label="Atualizar stores"
+              text="Atualizar"
               size="sm"
               variant="secondary"
               tooltipSide="bottom"
               disabled={loadingStores}
               onClick={() => void loadStores()}
-              icon={<RefreshCw className={`w-4 h-4 ${loadingStores ? 'animate-spin' : ''}`} />}
+              icon={<RefreshCw className={`w-3.5 h-3.5 ${loadingStores ? 'animate-spin' : ''}`} />}
             />
             <IconTooltipButton
               label="Novo Secret Store"
+              text="Novo Store"
               size="sm"
               variant="primary"
               tooltipSide="bottom"
               onClick={() => setNewStoreOpen((prev) => !prev)}
-              icon={<Plus className="w-4 h-4" />}
+              icon={<Plus className="w-3.5 h-3.5" />}
             />
           </div>
         </div>
@@ -235,7 +311,7 @@ export function SecretsStoreView({ profile, onNotify }: SecretsStoreViewProps) {
                 size="sm"
                 variant="secondary"
                 onClick={() => setNewStoreOpen(false)}
-                icon={<X className="w-4 h-4" />}
+                icon={<X className="w-3.5 h-3.5" />}
               />
               <IconTooltipButton
                 type="submit"
@@ -243,7 +319,7 @@ export function SecretsStoreView({ profile, onNotify }: SecretsStoreViewProps) {
                 size="sm"
                 variant="primary"
                 disabled={creatingStore}
-                icon={<Check className="w-4 h-4" />}
+                icon={<Check className="w-3.5 h-3.5" />}
               />
             </div>
           </form>
@@ -298,6 +374,7 @@ export function SecretsStoreView({ profile, onNotify }: SecretsStoreViewProps) {
                     {!confirmingDelete && (
                       <IconTooltipButton
                         label={`Excluir store ${store.name}`}
+                        text="Excluir"
                         size="sm"
                         variant="danger"
                         onClick={() => setConfirmDeleteStoreId(store.id)}
@@ -310,6 +387,7 @@ export function SecretsStoreView({ profile, onNotify }: SecretsStoreViewProps) {
                     <div className="px-3 pb-2.5 flex items-center justify-end gap-2">
                       <IconTooltipButton
                         label="Cancelar exclusão"
+                        text="Cancelar"
                         size="sm"
                         variant="secondary"
                         onClick={() => setConfirmDeleteStoreId(null)}
@@ -317,6 +395,7 @@ export function SecretsStoreView({ profile, onNotify }: SecretsStoreViewProps) {
                       />
                       <IconTooltipButton
                         label="Confirmar exclusão do Store"
+                        text="Confirmar"
                         size="sm"
                         variant="primary"
                         onClick={() => void handleDeleteStore(store.id)}
@@ -347,6 +426,8 @@ export function SecretsStoreView({ profile, onNotify }: SecretsStoreViewProps) {
 
             <IconTooltipButton
               label="Nova secret no Store"
+              text="Nova Secret"
+              size="sm"
               variant="primary"
               tooltipSide="bottom"
               disabled={!activeStore}
@@ -359,12 +440,12 @@ export function SecretsStoreView({ profile, onNotify }: SecretsStoreViewProps) {
                   storeName: activeStore.name,
                 })
               }
-              icon={<Plus className="w-4 h-4" />}
+              icon={<Plus className="w-3.5 h-3.5" />}
             />
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1">
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
+            <div className="relative flex-1 min-w-[200px]">
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="search"
@@ -374,8 +455,51 @@ export function SecretsStoreView({ profile, onNotify }: SecretsStoreViewProps) {
                 className="w-full h-11 pl-10 pr-3.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
               />
             </div>
+
+            <button
+              type="button"
+              role="switch"
+              aria-checked={maskValues}
+              aria-label={
+                maskValues
+                  ? 'Desmascarar valores das secrets no Store'
+                  : 'Mascarar valores das secrets no Store'
+              }
+              title={
+                maskValues
+                  ? 'Modo privacidade ativo · Clique para revelar valores disponíveis'
+                  : 'Valores visíveis · Clique para mascarar valores'
+              }
+              onClick={() => setMaskValues((prev) => !prev)}
+              className="min-h-[44px] h-11 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 hover:bg-slate-100 dark:hover:bg-slate-800/80 inline-flex items-center gap-2.5 text-xs font-medium text-slate-700 dark:text-slate-200 transition-colors shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500"
+            >
+              {maskValues ? (
+                <EyeOff className="w-4 h-4 text-orange-600 dark:text-orange-400 shrink-0" />
+              ) : (
+                <Eye className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              )}
+              <span className="whitespace-nowrap">
+                {maskValues ? 'Valores ocultos' : 'Valores visíveis'}
+              </span>
+              <span
+                aria-hidden="true"
+                className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${
+                  maskValues
+                    ? 'bg-orange-600 dark:bg-orange-500'
+                    : 'bg-slate-300 dark:bg-slate-700'
+                }`}
+              >
+                <span
+                  className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-xs transition-transform ${
+                    maskValues ? 'translate-x-[18px]' : 'translate-x-[3px]'
+                  }`}
+                />
+              </span>
+            </button>
+
             <IconTooltipButton
               label="Recarregar secrets do Store"
+              text="Recarregar"
               variant="secondary"
               tooltipSide="bottom"
               disabled={!activeStore || loadingSecrets}
@@ -443,30 +567,94 @@ export function SecretsStoreView({ profile, onNotify }: SecretsStoreViewProps) {
           <ul className="divide-y divide-slate-100 dark:divide-slate-800">
             {filteredSecrets.map((secret) => {
               const confirming = confirmDeleteSecretId === secret.id;
+              const isCopied = copiedSecretId === secret.id;
+              const isValueCopied = copiedValueId === secret.id;
+              const sessionValue = sessionValues[getSessionValueKey(selectedStoreId, secret.name)];
               return (
                 <li
                   key={secret.id}
-                  className="px-4 sm:px-5 py-4 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors flex items-center justify-between gap-3"
+                  className="px-4 sm:px-5 py-4 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                 >
-                  <div className="min-w-0 space-y-1">
-                    <p className="font-mono text-sm font-semibold truncate">{secret.name}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      <span>{secret.scopes?.join(', ') || 'Escopo padrão'}</span>
-                      {secret.status ? (
-                        <>
-                          <span aria-hidden="true"> · </span>
-                          <span>{secret.status}</span>
-                        </>
-                      ) : null}
-                      {secret.modified_on ? (
-                        <>
-                          <span aria-hidden="true"> · </span>
-                          <span className="tabular-nums">
-                            {new Date(secret.modified_on).toLocaleDateString('pt-BR')}
-                          </span>
-                        </>
-                      ) : null}
-                    </p>
+                  <div className="min-w-0 flex-1 space-y-1.5">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <p className="font-mono text-sm font-semibold truncate">{secret.name}</p>
+                      <IconTooltipButton
+                        label={isCopied ? `Chave ${secret.name} copiada` : `Copiar chave ${secret.name}`}
+                        text={isCopied ? 'Copiado' : 'Copiar'}
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => void handleCopySecretName(secret)}
+                        className="!h-7 !min-h-[28px] !px-2 !text-[11px] shrink-0"
+                        icon={
+                          isCopied ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5" />
+                          )
+                        }
+                      />
+                    </div>
+
+                    {maskValues ? (
+                      <p className="text-xs text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-1.5">
+                        <span className="font-mono tracking-wider select-none" aria-label="Valor mascarado">
+                          ••••••••••••
+                        </span>
+                        <span aria-hidden="true">·</span>
+                        <span>{secret.scopes?.join(', ') || 'Escopo padrão'}</span>
+                      </p>
+                    ) : (
+                      <div className="space-y-1">
+                        {sessionValue !== undefined ? (
+                          <div className="flex flex-wrap items-center gap-2 text-xs">
+                            <code className="font-mono px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 break-all">
+                              {sessionValue}
+                            </code>
+                            <IconTooltipButton
+                              label={
+                                isValueCopied
+                                  ? `Valor de ${secret.name} copiado`
+                                  : `Copiar valor de ${secret.name}`
+                              }
+                              text={isValueCopied ? 'Valor copiado' : 'Copiar valor'}
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => void handleCopySecretValue(secret, sessionValue)}
+                              className="!h-7 !min-h-[28px] !px-2 !text-[11px] shrink-0"
+                              icon={
+                                isValueCopied ? (
+                                  <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                                ) : (
+                                  <Copy className="w-3.5 h-3.5" />
+                                )
+                              }
+                            />
+                          </div>
+                        ) : (
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            Somente gravação (API Cloudflare não expõe valor salvo)
+                          </p>
+                        )}
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          <span>{secret.scopes?.join(', ') || 'Escopo padrão'}</span>
+                          {secret.status ? (
+                            <>
+                              <span aria-hidden="true"> · </span>
+                              <span>{secret.status}</span>
+                            </>
+                          ) : null}
+                          {secret.modified_on ? (
+                            <>
+                              <span aria-hidden="true"> · </span>
+                              <span className="tabular-nums">
+                                {new Date(secret.modified_on).toLocaleDateString('pt-BR')}
+                              </span>
+                            </>
+                          ) : null}
+                        </p>
+                      </div>
+                    )}
+
                     {secret.comment && (
                       <p className="text-xs text-slate-600 dark:text-slate-300 truncate">
                         {secret.comment}
@@ -474,29 +662,32 @@ export function SecretsStoreView({ profile, onNotify }: SecretsStoreViewProps) {
                     )}
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-2 shrink-0 flex-wrap">
                     {confirming ? (
                       <>
                         <IconTooltipButton
                           label="Cancelar exclusão"
+                          text="Cancelar"
                           size="sm"
                           variant="secondary"
                           onClick={() => setConfirmDeleteSecretId(null)}
-                          icon={<X className="w-4 h-4" />}
+                          icon={<X className="w-3.5 h-3.5" />}
                         />
                         <IconTooltipButton
                           label="Confirmar exclusão"
+                          text="Confirmar"
                           size="sm"
                           variant="primary"
                           onClick={() => void handleDeleteSecret(secret)}
                           className="!bg-red-600 hover:!bg-red-700"
-                          icon={<Check className="w-4 h-4" />}
+                          icon={<Check className="w-3.5 h-3.5" />}
                         />
                       </>
                     ) : (
                       <>
                         <IconTooltipButton
                           label="Editar / Rotacionar secret"
+                          text="Editar"
                           size="sm"
                           variant="secondary"
                           onClick={() =>
@@ -512,20 +703,22 @@ export function SecretsStoreView({ profile, onNotify }: SecretsStoreViewProps) {
                         />
                         <IconTooltipButton
                           label={`Duplicar ${secret.name}`}
+                          text="Duplicar"
                           size="sm"
                           variant="secondary"
                           onClick={() => {
                             setDuplicateTarget(secret);
                             setDuplicateName(`${secret.name}_COPY`);
                           }}
-                          icon={<Copy className="w-3.5 h-3.5" />}
+                          icon={<CopyPlus className="w-3.5 h-3.5" />}
                         />
                         <IconTooltipButton
                           label={`Excluir ${secret.name}`}
+                          text="Excluir"
                           size="sm"
                           variant="danger"
                           onClick={() => setConfirmDeleteSecretId(secret.id)}
-                          icon={<Trash2 className="w-4 h-4" />}
+                          icon={<Trash2 className="w-3.5 h-3.5" />}
                         />
                       </>
                     )}
@@ -542,7 +735,12 @@ export function SecretsStoreView({ profile, onNotify }: SecretsStoreViewProps) {
         token={profile.apiToken}
         accountId={profile.accountId}
         onClose={() => setEditorTarget(null)}
-        onSaved={(msg) => {
+        onSaved={(msg, savedSecret) => {
+          if (savedSecret?.value !== undefined && selectedStoreId) {
+            const key = getSessionValueKey(selectedStoreId, savedSecret.name);
+            const val = savedSecret.value;
+            setSessionValues((prev) => ({ ...prev, [key]: val }));
+          }
           setEditorTarget(null);
           onNotify(msg);
           void loadStoreSecrets();
@@ -584,7 +782,7 @@ export function SecretsStoreView({ profile, onNotify }: SecretsStoreViewProps) {
                   label={duplicating ? 'Duplicando...' : 'Duplicar Secret'}
                   variant="primary"
                   disabled={duplicating}
-                  icon={<Copy className="w-4 h-4" />}
+                  icon={<CopyPlus className="w-4 h-4" />}
                 />
               </div>
             </form>

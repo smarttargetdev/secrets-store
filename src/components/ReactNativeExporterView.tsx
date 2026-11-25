@@ -1,21 +1,25 @@
 import { useMemo, useState } from 'react';
-import { Check, Copy, Download, FileCode2, ShieldCheck } from 'lucide-react';
+import { Check, Code2, Copy, Download, Eye, FileCode2, ShieldCheck } from 'lucide-react';
 import {
   downloadReactNativeZip,
   getReactNativeProjectFiles,
 } from '../lib/reactNativeTemplate';
 import { IconTooltipButton } from './IconTooltipButton';
+import { MarkdownRenderer } from './MarkdownRenderer';
 
 export function ReactNativeExporterView() {
   const files = useMemo(() => getReactNativeProjectFiles(), []);
   const [selectedPath, setSelectedPath] = useState(files[0].path);
   const [copiedPath, setCopiedPath] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [showRawMarkdown, setShowRawMarkdown] = useState(false);
 
   const activeFile = useMemo(
     () => files.find((f) => f.path === selectedPath) ?? files[0],
     [files, selectedPath]
   );
+
+  const isMarkdown = activeFile.language === 'markdown';
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(activeFile.content);
@@ -34,7 +38,7 @@ export function ReactNativeExporterView() {
 
   return (
     <div className="space-y-6">
-      <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 sm:p-6 flex items-center justify-between gap-4">
+      <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1.5 max-w-2xl">
           <div className="flex items-center gap-2 text-xs font-semibold text-orange-600 dark:text-orange-400">
             <ShieldCheck className="w-4 h-4" />
@@ -50,11 +54,12 @@ export function ReactNativeExporterView() {
 
         <IconTooltipButton
           label={downloading ? 'Empacotando projeto...' : 'Baixar Projeto React Native (.ZIP)'}
+          text={downloading ? 'Empacotando...' : 'Baixar .ZIP'}
           variant="primary"
           tooltipSide="bottom"
           disabled={downloading}
           onClick={() => void handleDownloadZip()}
-          icon={<Download className="w-5 h-5" />}
+          icon={<Download className="w-4 h-4" />}
         />
       </section>
 
@@ -67,7 +72,10 @@ export function ReactNativeExporterView() {
               <button
                 key={file.path}
                 type="button"
-                onClick={() => setSelectedPath(file.path)}
+                onClick={() => {
+                  setSelectedPath(file.path);
+                  setShowRawMarkdown(false);
+                }}
                 className={`w-full min-h-[52px] px-3.5 py-2.5 rounded-xl text-left transition-colors flex items-start gap-3 ${
                   active
                     ? 'bg-orange-600/10 dark:bg-orange-500/15 text-orange-700 dark:text-orange-300'
@@ -87,34 +95,60 @@ export function ReactNativeExporterView() {
         </aside>
 
         <section className="lg:col-span-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
-          <div className="px-4 sm:px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3">
+          <div className="px-4 sm:px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="font-mono text-xs font-semibold truncate">{activeFile.path}</p>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 {activeFile.description}
               </p>
             </div>
-            <IconTooltipButton
-              label={copiedPath === activeFile.path ? 'Código copiado' : 'Copiar código do arquivo'}
-              size="sm"
-              variant="secondary"
-              tooltipSide="bottom"
-              onClick={() => void handleCopy()}
-              icon={
-                copiedPath === activeFile.path ? (
-                  <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                ) : (
-                  <Copy className="w-4 h-4" />
-                )
-              }
-            />
+            <div className="flex items-center gap-2 shrink-0 flex-wrap">
+              {isMarkdown && (
+                <IconTooltipButton
+                  label={showRawMarkdown ? 'Visualizar markup formatado' : 'Ver código Markdown bruto'}
+                  text={showRawMarkdown ? 'Formatado' : 'Markdown'}
+                  size="sm"
+                  variant="secondary"
+                  tooltipSide="bottom"
+                  onClick={() => setShowRawMarkdown((prev) => !prev)}
+                  icon={
+                    showRawMarkdown ? (
+                      <Eye className="w-3.5 h-3.5" />
+                    ) : (
+                      <Code2 className="w-3.5 h-3.5" />
+                    )
+                  }
+                />
+              )}
+              <IconTooltipButton
+                label={copiedPath === activeFile.path ? 'Código copiado' : 'Copiar conteúdo do arquivo'}
+                text={copiedPath === activeFile.path ? 'Copiado' : 'Copiar'}
+                size="sm"
+                variant="secondary"
+                tooltipSide="bottom"
+                onClick={() => void handleCopy()}
+                icon={
+                  copiedPath === activeFile.path ? (
+                    <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5" />
+                  )
+                }
+              />
+            </div>
           </div>
 
-          <div className="bg-slate-950 text-slate-100 p-4 sm:p-5 overflow-x-auto max-h-[600px]">
-            <pre className="font-mono text-xs leading-relaxed">
-              <code>{activeFile.content}</code>
-            </pre>
-          </div>
+          {isMarkdown && !showRawMarkdown ? (
+            <div className="p-5 sm:p-6 overflow-y-auto max-h-[600px]">
+              <MarkdownRenderer content={activeFile.content} />
+            </div>
+          ) : (
+            <div className="bg-slate-950 text-slate-100 p-4 sm:p-5 overflow-x-auto max-h-[600px]">
+              <pre className="font-mono text-xs leading-relaxed">
+                <code>{activeFile.content}</code>
+              </pre>
+            </div>
+          )}
         </section>
       </div>
     </div>

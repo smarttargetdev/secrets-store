@@ -33,7 +33,7 @@ interface SecretEditorSheetProps {
   token: string;
   accountId: string;
   onClose: () => void;
-  onSaved: (message: string) => void;
+  onSaved: (message: string, savedSecret?: { name: string; value?: string }) => void;
 }
 
 export function SecretEditorSheet({
@@ -117,7 +117,8 @@ export function SecretEditorSheet({
         onSaved(
           isEdit
             ? `Secret "${cleanName}" rotacionada no Worker "${target.scriptName}".`
-            : `Secret "${cleanName}" criada no Worker "${target.scriptName}".`
+            : `Secret "${cleanName}" criada no Worker "${target.scriptName}".`,
+          { name: cleanName, value }
         );
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Erro ao salvar secret.');
@@ -150,7 +151,10 @@ export function SecretEditorSheet({
           target.initialSecret.id,
           patchPayload
         );
-        onSaved(`Secret "${cleanName}" atualizada no Store "${target.storeName}".`);
+        onSaved(
+          `Secret "${cleanName}" atualizada no Store "${target.storeName}".`,
+          value ? { name: cleanName, value } : { name: cleanName }
+        );
       } else {
         await cloudflareApi.createStoreSecrets(token, accountId, target.storeId, [
           {
@@ -160,7 +164,10 @@ export function SecretEditorSheet({
             ...(scopes.length > 0 ? { scopes } : {}),
           },
         ]);
-        onSaved(`Secret "${cleanName}" criada no Store "${target.storeName}".`);
+        onSaved(`Secret "${cleanName}" criada no Store "${target.storeName}".`, {
+          name: cleanName,
+          value,
+        });
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao salvar no Secrets Store.');
@@ -193,10 +200,12 @@ export function SecretEditorSheet({
           </div>
           <IconTooltipButton
             label="Fechar formulário"
+            text="Fechar"
+            size="sm"
             variant="ghost"
             tooltipSide="bottom"
             onClick={onClose}
-            icon={<X className="w-5 h-5" />}
+            icon={<X className="w-4 h-4" />}
           />
         </div>
 
@@ -250,6 +259,7 @@ export function SecretEditorSheet({
               />
               <IconTooltipButton
                 label={showValue ? 'Ocultar valor' : 'Mostrar valor'}
+                text={showValue ? 'Ocultar' : 'Mostrar'}
                 variant="secondary"
                 onClick={() => setShowValue((prev) => !prev)}
                 icon={showValue ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
