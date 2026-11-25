@@ -1,0 +1,6 @@
+{
+  "name": "CF Vault — Cloudflare Secrets Manager",
+  "description": "Mobile-first Cloudflare Workers Secrets and Secrets Store manager with PIN-encrypted multi-profile vault and React Native Keychain exporter.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
